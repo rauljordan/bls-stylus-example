@@ -12,13 +12,17 @@ description = "Stylus hello world example"
 alloy-primitives = "0.3.1"
 alloy-sol-types = "0.3.1"
 stylus-sdk = "0.2.0"
-hex = "0.4.3"
 wee_alloc = "0.4.5"
+bls12_381 = { version = "0.7", default-features = false, features = ["groups", "pairings", "alloc", "experimental"] }
+pairing = "0.22"
+lazy_static = "1"
+sha2 = "0.9"
 
 [dev-dependencies]
 tokio = { version = "1.12.0", features = ["full"] } 
 ethers = "2.0"
 eyre = "0.6.8"
+hex = "0.4.3"
 
 [features]
 export-abi = ["stylus-sdk/export-abi"]
