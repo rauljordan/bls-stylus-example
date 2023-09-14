@@ -277,6 +277,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "bls-stylus-example"
+version = "0.1.0"
+dependencies = [
+ "alloy-primitives",
+ "alloy-sol-types",
+ "bls12_381",
+ "ethers",
+ "eyre",
+ "hex",
+ "pairing",
+ "sha2 0.9.9",
+ "stylus-sdk",
+ "tokio",
+ "wee_alloc",
+]
+
+[[package]]
 name = "bls12_381"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3090,24 +3107,6 @@ dependencies = [
  "quote",
  "rustversion",
  "syn 2.0.29",
-]
-
-[[package]]
-name = "stylus-hello-world"
-version = "0.1.3"
-dependencies = [
- "alloy-primitives",
- "alloy-sol-types",
- "bls12_381",
- "ethers",
- "eyre",
- "hex",
- "lazy_static",
- "pairing",
- "sha2 0.9.9",
- "stylus-sdk",
- "tokio",
- "wee_alloc",
 ]
 
 [[package]]

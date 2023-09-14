@@ -1,22 +1,19 @@
+// Most code from https://github.com/dfinity/verify-bls-signatures/blob/master/src/lib.rs
+// modified quite a bit to allow public keys in G1 and signatures in G2.
 #![allow(clippy::result_unit_err)]
 #![allow(dead_code)]
 
-//! Verify BLS signatures
-//! Crate from dfinity.
 use core::ops::Neg;
 
 use bls12_381::hash_to_curve::{ExpandMsgXmd, HashToCurve};
-use bls12_381::{multi_miller_loop, G1Affine, G1Projective, G2Affine, G2Prepared, Scalar};
+use bls12_381::{multi_miller_loop, G1Affine, G2Affine, G2Prepared, G2Projective};
 use pairing::group::{Curve, Group};
 
-lazy_static::lazy_static! {
-    static ref G2PREPARED_NEG_G : G2Prepared = G2Affine::generator().neg().into();
-}
+// This domain separation for BLS signatures is the same one that Ethereum mainnet uses.
+const BLS_SIGNATURE_DOMAIN_SEP: [u8; 43] = *b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_";
 
-const BLS_SIGNATURE_DOMAIN_SEP: [u8; 43] = *b"BLS_SIG_BLS12381G1_XMD:SHA-256_SSWU_RO_NUL_";
-
-fn hash_to_g1(msg: &[u8]) -> G1Affine {
-    <G1Projective as HashToCurve<ExpandMsgXmd<sha2::Sha256>>>::hash_to_curve(
+fn hash_to_g2(msg: &[u8]) -> G2Affine {
+    <G2Projective as HashToCurve<ExpandMsgXmd<sha2::Sha256>>>::hash_to_curve(
         msg,
         &BLS_SIGNATURE_DOMAIN_SEP,
     )
@@ -26,7 +23,7 @@ fn hash_to_g1(msg: &[u8]) -> G1Affine {
 /// A BLS12-381 public key usable for signature verification
 #[derive(Clone, Eq, PartialEq)]
 pub struct PublicKey {
-    pk: G2Affine,
+    pk: G1Affine,
 }
 /// An error indicating an encoded public key was not valid
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -39,9 +36,9 @@ pub enum InvalidPublicKey {
 
 impl PublicKey {
     /// The length of the binary encoding of this type
-    pub const BYTES: usize = 96;
+    pub const BYTES: usize = 48;
 
-    fn new(pk: G2Affine) -> Self {
+    fn new(pk: G1Affine) -> Self {
         Self { pk }
     }
 
@@ -52,7 +49,7 @@ impl PublicKey {
         match bytes {
             Err(_) => Err(InvalidPublicKey::WrongLength),
             Ok(b) => {
-                let pk = G2Affine::from_compressed(&b);
+                let pk = G1Affine::from_compressed(&b);
                 if bool::from(pk.is_some()) {
                     Ok(Self::new(pk.unwrap()))
                 } else {
@@ -64,12 +61,13 @@ impl PublicKey {
 
     /// Verify a BLS signature
     pub fn verify(&self, message: &[u8], signature: &Signature) -> Result<(), ()> {
-        let msg = hash_to_g1(message);
-        let g2_gen: &G2Prepared = &G2PREPARED_NEG_G;
-        let pk = G2Prepared::from(self.pk);
+        let msg = hash_to_g2(message);
+        let g1_gen: G1Affine = G1Affine::generator().neg();
+        let pk = G1Affine::from(self.pk);
+        let prepared_sig = G2Prepared::from(signature.sig);
 
-        let sig_g2 = (&signature.sig, g2_gen);
-        let msg_pk = (&msg, &pk);
+        let sig_g2 = (&g1_gen, &prepared_sig);
+        let msg_pk = (&pk, &msg.into());
 
         let x = multi_miller_loop(&[sig_g2, msg_pk]).final_exponentiation();
 
@@ -93,14 +91,14 @@ pub enum InvalidSignature {
 /// A type expressing a BLS12-381 signature
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Signature {
-    sig: G1Affine,
+    sig: G2Affine,
 }
 
 impl Signature {
     /// The length of the binary encoding of this type
-    pub const BYTES: usize = 48;
+    pub const BYTES: usize = 96;
 
-    fn new(sig: G1Affine) -> Self {
+    fn new(sig: G2Affine) -> Self {
         Self { sig }
     }
 
@@ -111,7 +109,7 @@ impl Signature {
         match bytes {
             Err(_) => Err(InvalidSignature::WrongLength),
             Ok(b) => {
-                let sig = G1Affine::from_compressed(&b);
+                let sig = G2Affine::from_compressed(&b);
                 if bool::from(sig.is_some()) {
                     Ok(Self::new(sig.unwrap()))
                 } else {
